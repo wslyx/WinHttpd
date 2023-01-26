@@ -1,0 +1,3 @@
+F:/VSPro/WinHttpd/cmake-build-debug/CMakeFiles/WinHttpd.dir
+F:/VSPro/WinHttpd/cmake-build-debug/CMakeFiles/edit_cache.dir
+F:/VSPro/WinHttpd/cmake-build-debug/CMakeFiles/rebuild_cache.dir
