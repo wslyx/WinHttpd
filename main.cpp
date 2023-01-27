@@ -5,7 +5,7 @@
 
 #pragma comment (lib,"WS2_32.lib")
 //Output Macro
-#define PRINTF(str) std::cout<<"__func__:"<<__func__<<", __code_line__:"<<__LINE__<<std::endl \
+#define PRINTF(str) std::cout<<"[__func__:"<<__func__<<", __code_line__:"<<__LINE__<<"]"<<std::endl \
                     <<#str<<": "<<str<<std::endl;
 //Error return
 void error_die(const char* str)
@@ -222,7 +222,7 @@ DWORD WINAPI accept_requset(LPVOID arg)
         strcat_s(path,"index.html");
     }
     PRINTF(path);
-    //stat is a file system struct,Used to obtain file status information
+    //Stat is a file system struct,Used to obtain file status information
     struct stat status{};
     if(stat(path,&status)==-1)
     {
