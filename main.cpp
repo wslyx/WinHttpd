@@ -7,6 +7,10 @@
 //Output Macro
 #define PRINTF(str) std::cout<<"[__func__:"<<__func__<<", __code_line__:"<<__LINE__<<"] "\
                     <<#str<<": "<<str<<std::endl;
+
+void server_file(int client,const char* fileName);
+void cat(int client,FILE* resource);
+
 //Error return
 void error_die(const char* str)
 {
@@ -104,17 +108,7 @@ int get_line(int sock,char* buff,int size)
     return total;
 }
 
-void unimplement(int client)
-{
-
-}
-
-void not_found(int client)
-{
-
-}
-
-void headers(int client, std::string ContentType)
+void headers(int client, const std::string& ContentType)
 {
     //send content header
     char buff[1024];
@@ -128,6 +122,25 @@ void headers(int client, std::string ContentType)
     send(client,buff, (int)strlen(buff),0);
     strcpy_s(buff,"\r\n");
     send(client,buff, (int)strlen(buff),0);
+}
+
+void unimplement(int client)
+{
+
+}
+
+void not_found(int client)
+{
+    FILE* resource = nullptr;
+    errno_t err = fopen_s(&resource,"./html/404.html","r");
+    if (err!=0)
+    {
+        std::cout<<"please create 404.html"<<std::endl;
+    } else {
+        headers(client,"text/html");
+        cat(client, resource);
+    }
+    fclose(resource);
 }
 
 void cat(int client,FILE* resource)
@@ -166,15 +179,8 @@ void cat(int client,FILE* resource)
 
 void server_file(int client,const char* fileName)
 {
-    int num_chars = 1;
     char buff[1024];
     std::string fileNameCpp = fileName;
-    while (num_chars>0)
-    {
-        num_chars = get_line(client,buff,sizeof(buff));
-        if (buff[0]=='\n')
-            break;
-    }
     FILE* resource = nullptr;
     if (fileNameCpp.find(".html")!=std::string::npos || \
         fileNameCpp.find(".js")!=std::string::npos || \
@@ -266,6 +272,14 @@ DWORD WINAPI accept_requset(LPVOID arg)
         }
         not_found(client_sock);
     } else {
+        char c;
+        num_chars = recv(client_sock,&c,1,MSG_PEEK); //check but not read out
+        while (num_chars>0)
+        {
+            num_chars = get_line(client_sock,buff,sizeof(buff));
+            if (buff[0]=='\n')
+                break;
+        }
         //return file to client
         if ((status.st_mode & S_IFMT) == S_IFDIR)
         {
