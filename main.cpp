@@ -5,7 +5,7 @@
 
 #pragma comment (lib,"WS2_32.lib")
 //Output Macro
-#define PRINTF(str) std::cout<<"[__func__:"<<__func__<<", __code_line__:"<<__LINE__<<"]"<<std::endl \
+#define PRINTF(str) std::cout<<"[__func__:"<<__func__<<", __code_line__:"<<__LINE__<<"] "\
                     <<#str<<": "<<str<<std::endl;
 //Error return
 void error_die(const char* str)
@@ -114,7 +114,7 @@ void not_found(int client)
 
 }
 
-void headers(int client)
+void headers(int client, std::string ContentType)
 {
     //send content header
     char buff[1024];
@@ -122,7 +122,9 @@ void headers(int client)
     send(client,buff, (int)strlen(buff),0);
     strcpy_s(buff,"Server: GaryHttpd/0.1\r\n");
     send(client,buff, (int)strlen(buff),0);
-    strcpy_s(buff,"Content-type:text/html\n");
+    strcpy_s(buff,"Content-type:");
+    strcat_s(buff,ContentType.c_str());
+    strcat_s(buff,"\n");
     send(client,buff, (int)strlen(buff),0);
     strcpy_s(buff,"\r\n");
     send(client,buff, (int)strlen(buff),0);
@@ -166,20 +168,47 @@ void server_file(int client,const char* fileName)
 {
     int num_chars = 1;
     char buff[1024];
+    std::string fileNameCpp = fileName;
     while (num_chars>0)
     {
         num_chars = get_line(client,buff,sizeof(buff));
         if (buff[0]=='\n')
             break;
     }
-    FILE* resource;
-    errno_t err = fopen_s(&resource,fileName,"r");
-    if (err!=0)
+    FILE* resource = nullptr;
+    if (fileNameCpp.find(".html")!=std::string::npos || \
+        fileNameCpp.find(".js")!=std::string::npos || \
+        fileNameCpp.find(".css")!=std::string::npos)
     {
-        not_found(client);
+        errno_t err = fopen_s(&resource,fileName,"r");
+        if (err!=0)
+        {
+            not_found(client);
+        } else {
+            std::string type;
+            if (fileNameCpp.find(".html")!=std::string::npos)
+                type = "text/html";
+            else if (fileNameCpp.find(".js")!=std::string::npos)
+                type = "application/javascript";
+            else if (fileNameCpp.find(".css")!=std::string::npos)
+                type = "text/css";
+            else{
+                fclose(resource);
+                return;
+            }
+            headers(client,type);
+            cat(client,resource);
+        }
     } else {
-        headers(client);
-        cat(client,resource);
+        errno_t err = fopen_s(&resource,fileName,"rb");
+        if (err!=0)
+        {
+            not_found(client);
+        } else {
+            char type[] = "image/jpeg";
+            headers(client,type);
+            cat(client,resource);
+        }
     }
     fclose(resource);
 }
@@ -229,11 +258,11 @@ DWORD WINAPI accept_requset(LPVOID arg)
         //Remove the remaining characters in the sock queue
         char c;
         num_chars = recv(client_sock,&c,1,MSG_PEEK); //check but not read out
-        while (num_chars > 0)
+        while (num_chars>0)
         {
-            num_chars = recv(client_sock,&c, 1,0);  //wait for client close
-            if (num_chars>0)
-                printf("%c",c);
+            num_chars = get_line(client_sock,buff,sizeof(buff));
+            if (buff[0]=='\n')
+                break;
         }
         not_found(client_sock);
     } else {
@@ -248,9 +277,9 @@ DWORD WINAPI accept_requset(LPVOID arg)
     return 0;
 }
 
-bool ctrlHandler( DWORD CtrlType )
+bool ctrlHandler(DWORD CtrlType)
 {
-    switch( CtrlType )
+    switch(CtrlType)
     {
         // handle the ctrl-c signal.
         case CTRL_C_EVENT:
